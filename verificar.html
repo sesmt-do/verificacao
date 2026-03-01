@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Verificação</title>
+
+<style>
+  body{font-family:Arial;background:#f2f2f2;text-align:center;margin:0;padding:16px}
+  .card{background:#fff;max-width:420px;margin:0 auto;padding:18px;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.08)}
+  img{width:160px;height:200px;object-fit:cover;border-radius:12px;border:1px solid #ddd}
+  h2{margin:6px 0 14px 0}
+  h3{margin:10px 0 6px 0}
+  .linha{margin:4px 0}
+  .status{display:inline-block;margin-top:12px;padding:8px 12px;border-radius:999px;font-weight:bold;border:1px solid #ddd}
+  .ok{background:#e8fff0;color:#0b7a2f;border-color:#7ee2a2}
+  .warn{background:#fff7e6;color:#8a5a00;border-color:#ffd37a}
+  .bad{background:#ffecec;color:#b00020;border-color:#ff9aa7}
+  .small{color:#666;font-size:12px;margin-top:10px}
+  .sec{margin-top:14px;text-align:left}
+  .sec-title{font-weight:bold;margin:10px 0 6px 0}
+  .item{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #eee;font-size:14px}
+  .tag{padding:2px 8px;border-radius:999px;border:1px solid #ddd;font-size:12px}
+  .tag.ok{background:#e8fff0}
+  .tag.warn{background:#fff7e6}
+  .tag.bad{background:#ffecec}
+</style>
+</head>
+
+<body>
+  <div class="card" id="app">Carregando...</div>
+
+<script>
+/** === 1) CADASTRO DOS COLABORADORES ===
+ *  Para adicionar outro colaborador, copie o bloco e mude o id (ex: "joao")
+ */
+const colaboradores = {
+  francisco: {
+    nome: "FRANCISCO BRUNO DA S. MAGALHÃES",
+    foto: "foto.jpg",
+    cpf: "***.***.***-**",
+    admissao: "10/01/2025",
+    empresa: "Sistema de verificação por QR",
+    treinamentos: [
+      { nome: "NR 10", inicio: "24/10/2025", fim: "24/10/2027" },
+      { nome: "NR 35", inicio: "08/10/2025", fim: "08/10/2027" },
+      { nome: "NR 12", inicio: "07/10/2025", fim: "07/10/2027" },
+      { nome: "NR 12 CESTO AÉREO", inicio: "24/04/2025", fim: "24/04/2026" },
+      { nome: "NR 18", inicio: "06/06/2025", fim: "06/06/2027" },
+    ],
+    aso: { nome: "ASO", inicio: "22/05/2025", fim: "22/06/2026" }
+  }
+};
+
+/** === 2) FUNÇÕES DE DATA E STATUS === */
+function parseBR(d){ // "dd/mm/aaaa" -> Date
+  const [dd,mm,aa] = d.split("/").map(Number);
+  return new Date(aa, mm-1, dd);
+}
+function diasEntre(hoje, fim){
+  const ms = fim.getTime() - hoje.getTime();
+  return Math.ceil(ms / (1000*60*60*24));
+}
+function tagStatus(dataFim){
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  const fim = parseBR(dataFim);
+  const diff = diasEntre(hoje, fim);
+  if (diff < 0) return { cls:"bad", txt:"VENCIDO" };
+  if (diff <= 30) return { cls:"warn", txt:"A VENCER" };
+  return { cls:"ok", txt:"VÁLIDO" };
+}
+function statusGeral(itens){
+  // Se qualquer vencido => vencido. Senão se qualquer a vencer => a vencer. Senão válido.
+  let geral = { cls:"ok", txt:"VÁLIDO" };
+  for (const it of itens){
+    const s = tagStatus(it.fim);
+    if (s.txt === "VENCIDO") return s;
+    if (s.txt === "A VENCER") geral = s;
+  }
+  return geral;
+}
+
+/** === 3) RENDER === */
+const app = document.getElementById("app");
+const params = new URLSearchParams(location.search);
+const id = (params.get("id") || "").toLowerCase().trim();
+
+if(!id || !colaboradores[id]){
+  app.innerHTML = `
+    <h2>VERIFICAÇÃO</h2>
+    <div class="status bad">NÃO ENCONTRADO</div>
+    <div class="small">Use um QR válido.</div>
+  `;
+} else {
+  const c = colaboradores[id];
+  const itens = [...c.treinamentos, c.aso]; // para status geral
+  const geral = statusGeral(itens);
+
+  const linhasTreino = c.treinamentos.map(t=>{
+    const s = tagStatus(t.fim);
+    return `
+      <div class="item">
+        <div>
+          <div><b>${t.nome}</b></div>
+          <div class="small">${t.inicio} a ${t.fim}</div>
+        </div>
+        <div class="tag ${s.cls}">${s.txt}</div>
+      </div>
+    `;
+  }).join("");
+
+  const sAso = tagStatus(c.aso.fim);
+
+  app.innerHTML = `
+    <h2>VERIFICAÇÃO DO COLABORADOR</h2>
+
+    <img src="${c.foto}" alt="Foto do colaborador" />
+
+    <h3>${c.nome}</h3>
+    <div class="linha">CPF: ${c.cpf}</div>
+    <div class="linha">Admissão: ${c.admissao}</div>
+    <div class="linha">${c.empresa}</div>
+
+    <div class="status ${geral.cls}">STATUS: ${geral.txt}</div>
+
+    <div class="sec">
+      <div class="sec-title">TREINAMENTOS</div>
+      ${linhasTreino}
+
+      <div class="sec-title" style="margin-top:12px;">ASO</div>
+      <div class="item">
+        <div>
+          <div><b>${c.aso.nome}</b></div>
+          <div class="small">${c.aso.inicio} a ${c.aso.fim}</div>
+        </div>
+        <div class="tag ${sAso.cls}">${sAso.txt}</div>
+      </div>
+
+      <div class="small">* Status calculado pela data final de validade.</div>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

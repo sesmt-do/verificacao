@@ -121,6 +121,7 @@ if(!id || !colaboradores[id]){
     <img src="${c.foto}" alt="Foto do colaborador" />
 
     <h3>${c.nome}</h3>
+    <div class="linha">Cargo: <b>${c.cargo || "—"}</b></div>
     <div class="linha">Matrícula: <b>${c.matricula}</b></div>
     <div class="linha">CPF: ${c.cpf}</div>
     <div class="linha">Admissão: ${c.admissao}</div>
